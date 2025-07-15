@@ -1,0 +1,198 @@
+# Règles Cursor pour TP Machine NestJS - Système d'Authentification & Watchlist
+
+## 🎯 CONTEXTE
+- TP Machine de 2h sur NestJS
+- Sujet : Système d'authentification complet + Application Watchlist
+- Base de données PostgreSQL avec Prisma
+- Email via MailDev (Docker) pour validation et 2FA
+- Documentation Swagger obligatoire
+- Authentification JWT + 2FA par email
+- Gestion des rôles (USER, ADMIN)
+- Ressources privées par utilisateur
+
+## 📋 RÈGLES DE DÉVELOPPEMENT
+
+### 1. ARCHITECTURE NESTJS
+- Toujours utiliser l'architecture modulaire NestJS
+- Créer des modules séparés pour chaque entité métier
+- Utiliser les décorateurs NestJS (@Controller, @Injectable, @Module, etc.)
+- Respecter la séparation Controller/Service/Repository
+
+### 2. BASE DE DONNÉES
+- Utiliser UNIQUEMENT Prisma pour les opérations DB
+- Créer des DTOs avec class-validator pour la validation
+- Utiliser PrismaService existant (pas de nouveau service DB)
+- Toujours gérer les erreurs de base de données
+- **Modèles nécessaires** : User, Movie, EmailVerification, TwoFactorCode
+- **Relations** : User -> Movie (one-to-many)
+- **Champs User** : id, email, password, username, role, isEmailVerified
+- **Champs Movie** : id, title, description, year, userId
+
+### 3. VALIDATION ET SÉCURITÉ
+- Validation obligatoire avec class-validator
+- Utiliser @IsEmail(), @IsString(), @IsOptional(), etc.
+- Validation globale déjà configurée (whitelist: true)
+- Toujours valider les entrées utilisateur
+- **Hashage des mots de passe** avec bcrypt
+- **JWT pour l'authentification** (pas de sessions)
+- **Guards pour protéger** les endpoints privés
+- **Décorateurs @Roles()** pour la gestion des rôles
+- **Validation des tokens** d'email et codes 2FA
+
+### 4. EMAIL (MAILDEV)
+- Utiliser MailDev pour les tests (port 1025 SMTP)
+- Interface web MailDev : http://localhost:1080
+- Créer un service d'email réutilisable
+- Gérer les erreurs d'envoi d'email
+- **Validation par email** lors de l'inscription
+- **Envoi de codes 2FA** par email lors de la connexion
+- Templates d'email pour validation et 2FA
+
+### 5. DOCUMENTATION
+- Documentation Swagger OBLIGATOIRE
+- Utiliser @ApiTags, @ApiOperation, @ApiResponse
+- Documenter tous les endpoints
+- Exemple de requête/réponse pour chaque endpoint
+
+### 6. CODE STYLE
+- TypeScript strict
+- Interfaces pour tous les types
+- Gestion d'erreurs avec try/catch
+- Logs appropriés pour le debugging
+
+## 🚫 INTERDICTIONS
+- Pas de Tailwind CSS (backend uniquement)
+- Pas de nouvelles dépendances sans validation
+- Pas de code frontend
+- Pas de modification de la configuration existante
+
+## ✅ CHECKLIST TP
+### 🔐 AUTHENTIFICATION
+- [ ] Module Auth créé (inscription, connexion, 2FA)
+- [ ] Validation par email lors de l'inscription
+- [ ] Authentification 2FA avec code par email
+- [ ] JWT pour la gestion des sessions
+- [ ] Gestion des rôles (USER, ADMIN)
+- [ ] Guards pour endpoints privés
+- [ ] DTOs pour auth (RegisterDto, LoginDto, VerifyEmailDto, Verify2FADto)
+
+### 🎬 WATCHLIST
+- [ ] Module Movie/Watchlist créé
+- [ ] CRUD films (Create, Read, Update, Delete)
+- [ ] Ressources privées par utilisateur
+- [ ] Endpoint admin pour voir toutes les watchlists
+- [ ] DTOs pour films (CreateMovieDto, UpdateMovieDto)
+
+### 📧 EMAIL & DOCUMENTATION
+- [ ] Service d'email fonctionnel (validation + 2FA)
+- [ ] Documentation Swagger complète
+- [ ] Gestion d'erreurs appropriée
+
+## 📝 EXEMPLES DE CODE
+
+### DTOs Auth
+```typescript
+export class RegisterDto {
+  @IsString()
+  @IsNotEmpty()
+  username: string;
+
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(6)
+  password: string;
+}
+
+export class LoginDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  password: string;
+}
+
+export class VerifyEmailDto {
+  @IsString()
+  @IsNotEmpty()
+  token: string;
+}
+
+export class Verify2FADto {
+  @IsString()
+  @Length(6, 6)
+  code: string;
+}
+```
+
+### DTOs Movie
+```typescript
+export class CreateMovieDto {
+  @IsString()
+  @IsNotEmpty()
+  title: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsNumber()
+  @IsOptional()
+  year?: number;
+}
+```
+
+### Service Email
+```typescript
+@Injectable()
+export class EmailService {
+  async sendVerificationEmail(email: string, token: string) {
+    // Email de validation d'inscription
+  }
+
+  async send2FACode(email: string, code: string) {
+    // Code 2FA pour connexion
+  }
+}
+```
+
+### Guards & Décorateurs
+```typescript
+@UseGuards(JwtAuthGuard)
+@Roles(Role.ADMIN)
+@Get('admin/movies')
+async getAllMovies() {
+  // Endpoint admin seulement
+}
+
+@UseGuards(JwtAuthGuard)
+@Get('my-movies')
+async getMyMovies(@Request() req) {
+  // Films de l'utilisateur connecté
+}
+```
+
+### Documentation Swagger
+```typescript
+@ApiTags('auth')
+@ApiOperation({ summary: 'Register new user' })
+@ApiResponse({ status: 201, description: 'User registered, check email' })
+@ApiResponse({ status: 400, description: 'Bad request' })
+```
+
+## 🎯 PRIORITÉS POUR 2H
+### PHASE 1 - AUTHENTIFICATION (60 min)
+1. **Module Auth** avec inscription/connexion (20 min)
+2. **Validation par email** lors de l'inscription (15 min)
+3. **2FA par email** lors de la connexion (15 min)
+4. **JWT + Guards** pour sécurisation (10 min)
+
+### PHASE 2 - WATCHLIST (45 min)
+5. **Module Movie** avec CRUD (20 min)
+6. **Ressources privées** par utilisateur (15 min)
+7. **Endpoint admin** pour toutes les watchlists (10 min)
+
+### PHASE 3 - FINALISATION (15 min)
+8. **Documentation Swagger** complète (10 min)
+9. **Tests et corrections** (5 min) 
